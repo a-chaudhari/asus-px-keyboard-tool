@@ -1,0 +1,8 @@
+[package]
+name = "rusttest"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hidapi = "2.6.3"
+cc = "1.0"

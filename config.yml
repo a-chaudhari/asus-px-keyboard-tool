@@ -1,0 +1,15 @@
+bpf:
+  enabled: true
+  remaps:
+    - from: 0xec
+      to: 0x1ec
+    - from: 0x1ec
+      to: 0x2ec
+    - from: 0x2ec
+      to: 0x3ec
+
+fnlock:
+  enabled: true
+  keycode: KEY_FN_LOCK
+  default: last // on, off, last
+
