@@ -1,15 +1,17 @@
 mod hid;
+mod state;
+mod key_listener;
+mod config;
+
 unsafe extern "C" {
     fn run_bpf(hid_id: u32, remap_array: *const u32, remap_count: u32) -> i32;
 }
 
 fn main() {
     println!("Hello, world!");
-    do_pbf();
-    let hid_api = hidapi::HidApi::new()
-        .expect("Failed to initialize HID API");
-    let hidraw_path = hid::get_hidraw_path(hid_api);
-    hid::toggle_fn_lock(hidraw_path, true);
+    let dev_info = hid::get_hardware_info();
+    // do_pbf();
+    // hid::toggle_fn_lock(hidraw_path, true);
     println!();
 }
 
