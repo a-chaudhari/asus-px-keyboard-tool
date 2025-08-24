@@ -13,3 +13,6 @@ fnlock:
   keycode: KEY_FN_LOCK
   default: last // on, off, last
 
+kb_brightness_cycle:
+  enabled: true
+  keycode: KEY_KBDIILLTOGGLE
