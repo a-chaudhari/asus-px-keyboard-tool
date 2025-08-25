@@ -1,6 +1,6 @@
 [Unit]
 Description=asus px kb tool
-Requires=asus-px-keyboard-toolrestore.service
+Requires=asus-px-keyboard-tool-restore.service
 
 [Service]
 Type=simple
