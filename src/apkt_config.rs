@@ -15,7 +15,7 @@ pub struct CompatibilityConfig {
 pub struct FnLockConfig {
     pub enabled: bool,
     pub keycode: String,
-    pub default: String,
+    pub boot_default: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,10 +38,9 @@ pub struct KbBrightnessConfig {
     pub keycode: String,
 }
 
-pub fn get_config() -> ConfigWrapper {
+pub fn get_config(path: &str) -> ConfigWrapper {
     let settings = config::Config::builder()
-        // Add in `./Settings.toml`
-        .add_source(config::File::with_name("config"))
+        .add_source(config::File::with_name(path))
         .build()
         .unwrap();
     settings.try_deserialize::<ConfigWrapper>().unwrap()

@@ -4,16 +4,17 @@ remaps = [
     { from = 0x4e, to = 0x5c }, # fn-lock (fn + esc) -> key_prog3
     { from = 0x7e, to = 0xba }, # emoji picker key -> key_prog2
     { from = 0x8b, to = 0x38 }, # proart hub key -> key_prog1
+    { from = 0xc7, to = 0x99 }, # kb backlight key -> key_prog4
 ]
 
 [compatibility]
-keyd = false
+keyd = false # only enable if you use keyd
 
 [fnlock]
 enabled = true
 keycode = "KEY_PROG3"
-default = "last" # "last", "on", "off"
+boot_default = "last" # "last", "on", "off"
 
 [kb_brightness_cycle]
 enabled = true
-keycode = "KEY_KBDILLUMTOGGLE"
+keycode = "KEY_PROG4"

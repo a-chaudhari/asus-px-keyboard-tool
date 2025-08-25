@@ -34,27 +34,69 @@ pub fn toggle_fn_lock(hid_path: &String, new_state: bool) {
     }
 }
 
-pub fn get_hardware_info(keyd_mode: bool) -> HidDeviceInfo{
-    // TODO implement keyd mode
+fn get_hidraw_path(bus_path: String) -> String {
+    let hidraw_dir_path = format!("{}/hidraw", bus_path);
+    let hidraw_entries = std::fs::read_dir(hidraw_dir_path)
+        .expect("Failed to read hidraw directory");
+    for hidraw_entry in hidraw_entries {
+        let hidraw_entry = hidraw_entry.expect("Failed to read hidraw entry");
+        let hidraw_file_name = hidraw_entry.file_name();
+        let hidraw_file_name_str = hidraw_file_name.to_str()
+            .expect("Failed to convert hidraw file name to string");
+        if hidraw_file_name_str.starts_with("hidraw") {
+            let hidraw_full_path = format!("/dev/{}", hidraw_file_name_str);
+            return hidraw_full_path;
+        }
+    }
+    panic!("No matching hidraw device found");
+}
+
+fn get_input_device_path(bus_path: String) -> String {
+    let input_dir_path = format!("{}/input", bus_path);
+    let input_entries = std::fs::read_dir(input_dir_path)
+        .expect("Failed to read input directory");
+    for input_entry in input_entries {
+        let input_entry = input_entry.expect("Failed to read input entry");
+        let input_file_name = input_entry.file_name();
+        let input_file_name_str = input_file_name.to_str()
+            .expect("Failed to convert input file name to string");
+        if input_file_name_str.starts_with("input") {
+            // now get the event path in that folder
+            let event_dir_path = format!("{}", input_entry.path().to_str().unwrap());
+            let event_entries = std::fs::read_dir(event_dir_path)
+                .expect("Failed to read event directory");
+            for event_entry in event_entries {
+                let event_entry = event_entry.expect("Failed to read event entry");
+                let event_file_name = event_entry.file_name();
+                let event_file_name_str = event_file_name.to_str()
+                    .expect("Failed to convert event file name to string");
+                if event_file_name_str.starts_with("event") {
+                    let event_full_path = format!("/dev/input/{}", event_file_name_str);
+                    return event_full_path;
+                }
+            }
+        }
+    }
+    panic!("No matching input device found");
+}
+
+fn get_bus_path(vid_pid: &str, descriptor_check: bool) -> String {
     let syspath = "/sys/bus/hid/devices";
-    let target = "0B05:19B6";
     // read in directory to find the target
     let entries = std::fs::read_dir(syspath)
         .expect("Failed to read /sys/bus/hid/devices directory");
-    let mut retval = HidDeviceInfo {
-        hid_id: 0,
-        input_device_path: String::new(),
-        hidraw_device_path: String::new(),
-    };
 
     for entry in entries {
         let entry = entry.expect("Failed to read entry");
         let file_name = entry.file_name();
         let file_name_str = file_name.to_str()
             .expect("Failed to convert file name to string");
-        if file_name_str.contains(target) {
+        if file_name_str.contains(vid_pid) {
             let full_path = format!("{}/{}", syspath, file_name_str);
             // now check the report_descriptor file
+            if !descriptor_check {
+                return full_path;
+            }
             let report_descriptor_path = format!("{}/report_descriptor", full_path);
             let report_descriptor = std::fs::read(report_descriptor_path)
                 .expect("Failed to read report_descriptor file");
@@ -65,59 +107,39 @@ pub fn get_hardware_info(keyd_mode: bool) -> HidDeviceInfo{
                 .windows(exp_bytes.len())
                 .any(|window| window == exp_bytes.as_slice());
             if found {
-                // get the last character of the filename and parse to u32
-                let hid_id_str = &file_name_str[file_name_str.len() - 1..];
-                let hid_id = hid_id_str.parse::<u32>()
-                    .expect("Failed to parse HID ID");
-                retval.hid_id = hid_id;
-
-                // now find the event device path in input subdirectory
-                // TODO implement keyd mode
-                let input_dir_path = format!("{}/input", full_path);
-                let input_entries = std::fs::read_dir(input_dir_path)
-                    .expect("Failed to read input directory");
-                for input_entry in input_entries {
-                    let input_entry = input_entry.expect("Failed to read input entry");
-                    let input_file_name = input_entry.file_name();
-                    let input_file_name_str = input_file_name.to_str()
-                        .expect("Failed to convert input file name to string");
-                    if input_file_name_str.starts_with("input") {
-                        // now get the event path in that folder
-                        let event_dir_path = format!("{}", input_entry.path().to_str().unwrap());
-                        let event_entries = std::fs::read_dir(event_dir_path)
-                            .expect("Failed to read event directory");
-                        for event_entry in event_entries {
-                            let event_entry = event_entry.expect("Failed to read event entry");
-                            let event_file_name = event_entry.file_name();
-                            let event_file_name_str = event_file_name.to_str()
-                                .expect("Failed to convert event file name to string");
-                            if event_file_name_str.starts_with("event") {
-                                let event_full_path = format!("/dev/input/{}", event_file_name_str);
-                                retval.input_device_path = event_full_path;
-                                break;
-                            }
-                        }
-                    }
-                }
-                // now find the hidraw device path in hidraw subdirectory
-                let hidraw_dir_path = format!("{}/hidraw", full_path);
-                let hidraw_entries = std::fs::read_dir(hidraw_dir_path)
-                    .expect("Failed to read hidraw directory");
-                for hidraw_entry in hidraw_entries {
-                    let hidraw_entry = hidraw_entry.expect("Failed to read hidraw entry");
-                    let hidraw_file_name = hidraw_entry.file_name();
-                    let hidraw_file_name_str = hidraw_file_name.to_str()
-                        .expect("Failed to convert hidraw file name to string");
-                    if hidraw_file_name_str.starts_with("hidraw") {
-                        let hidraw_full_path = format!("/dev/{}", hidraw_file_name_str);
-                        retval.hidraw_device_path = hidraw_full_path;
-                        break;
-                    }
-                }
-
-                return retval;
+                return full_path;
             }
         }
     }
     panic!("No matching HID device found");
+}
+
+fn parse_hid_id(bus_path: String) -> u32 {
+    let parts: Vec<&str> = bus_path.split(':').collect();
+    let last_part = parts.last().expect("Failed to get last part of bus path");
+    let hid_id_str = &last_part[last_part.len() - 1..];
+    let hid_id = hid_id_str.parse::<u32>()
+        .expect("Failed to parse HID ID");
+    hid_id
+}
+
+pub fn get_hardware_info(keyd_mode: bool) -> HidDeviceInfo{
+    let asus_ids = "0B05:19B6";
+    let asus_bus_path = get_bus_path(asus_ids, true);
+
+    if keyd_mode {
+        let keyd_ids = "0FAC:0ADE"; //
+        let keyd_bus_path = get_bus_path(keyd_ids, false);
+        return HidDeviceInfo {
+            hid_id: parse_hid_id(asus_bus_path.clone()),
+            input_device_path: get_input_device_path(keyd_bus_path.clone()),
+            hidraw_device_path: get_hidraw_path(asus_bus_path.clone()),
+        }
+    }
+
+    HidDeviceInfo {
+        hid_id: parse_hid_id(asus_bus_path.clone()),
+        input_device_path: get_input_device_path(asus_bus_path.clone()),
+        hidraw_device_path: get_hidraw_path(asus_bus_path.clone()),
+    }
 }
