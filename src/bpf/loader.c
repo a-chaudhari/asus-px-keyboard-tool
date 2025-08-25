@@ -26,7 +26,7 @@ void *poll_ringbuf( void *ptr )
 {
     int err;
     struct ring_buffer *rb = ptr;
-    printf("Starting ringbuff pollign thread\n");
+    printf("Starting ringbuf polling thread\n");
     while (1)
     {
         err = ring_buffer__poll(rb, 100 /* timeout, ms */);

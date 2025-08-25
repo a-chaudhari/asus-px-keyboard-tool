@@ -18,10 +18,29 @@ unsafe extern "C" {
 fn main() {
     // read args to get config path
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 2 {
-        panic!("Usage: {} [config_path]", args[0]);
+    let mut config_path = "asus-px-keyboard-tool.conf";
+    if args.len() >= 2 {
+        // allow user to specify config path as first arg
+        config_path = &args[1];
     }
-    let config = get_config("asus-px-keyboard-tool");
+    println!("Using config path: {}", config_path);
+    if args.len() == 3 {
+        if args[2] == "restore"{
+            // restore mode after sleep wakeup
+            restore(config_path);
+        } else {
+            println!("Invalid argument: {}", args[2]);
+            println!("Usage: {} [config_path] [restore]", args[0]);
+        }
+        return;
+    }
+    if args.len() > 3 {
+        println!("Too many arguments");
+        println!("Usage: {} [config_path] [restore]", args[0]);
+        return;
+    }
+
+    let config = get_config(config_path);
     let dev_info = hid::get_hardware_info(config.compatibility.keyd);
     if config.bpf.enabled {
         println!("Starting BPF with remaps: {:?}", config.bpf.remaps);
@@ -30,31 +49,35 @@ fn main() {
         println!("BPF disabled in config");
     }
     let input_device = Device::new_from_path(dev_info.input_device_path).unwrap();
-    let mut state;
+    let mut state= false;
 
-    // apply initial fnlock state
-    if config.fnlock.boot_default == "on" {
-        state = true;
-    } else if config.fnlock.boot_default == "off" {
-        state = false;
-    } else if config.fnlock.boot_default == "last" {
-        state = load_state();
-    } else {
-        panic!("Invalid fnlock.boot_default value in config: {}", config.fnlock.boot_default);
+    if config.fnlock.enabled {
+        // apply initial fnlock state
+        if config.fnlock.boot_default == "on" {
+            state = true;
+        } else if config.fnlock.boot_default == "off" {
+            state = false;
+        } else if config.fnlock.boot_default == "last" {
+            state = load_state();
+        } else {
+            panic!("Invalid fnlock.boot_default value in config: {}", config.fnlock.boot_default);
+        }
+        toggle_fn_lock(&dev_info.hidraw_device_path, state);
+        save_state(state);
     }
-    toggle_fn_lock(&dev_info.hidraw_device_path, state);
-    save_state(state);
 
     // convert string to enum
     let mut illum_keycode : Option<EventCode> = None;
     let mut fnlock_keycode : Option<EventCode> = None;
 
     if config.kb_brightness_cycle.enabled {
-        illum_keycode = Some(EventCode::from_str(&EventType::EV_KEY, &config.kb_brightness_cycle.keycode).unwrap());
+        illum_keycode = Some(EventCode::from_str(&EventType::EV_KEY, &config.kb_brightness_cycle.keycode)
+            .expect("Invalid kb_brightness keycode in config"));
     }
 
     if config.fnlock.enabled {
-        fnlock_keycode = Some(EventCode::from_str(&EventType::EV_KEY, &config.fnlock.keycode).unwrap());
+        fnlock_keycode = Some(EventCode::from_str(&EventType::EV_KEY, &config.fnlock.keycode)
+            .expect("Invalid fnlock keycode in config"));
     }
 
     loop {
@@ -78,6 +101,18 @@ fn main() {
             Err(_) => (),
         }
     }
+}
+
+fn restore(config_path: &str) {
+    let config = get_config(config_path);
+    if !config.fnlock.enabled {
+        println!("FnLock not enabled in config, nothing to restore");
+        return;
+    }
+    let state = load_state();
+    let dev_info = hid::get_hardware_info(config.compatibility.keyd);
+    toggle_fn_lock(&dev_info.hidraw_device_path, state);
+    println!("Restored FnLock state to: {}", if state { "on" } else { "off" });
 }
 
 fn start_bpf(hid_id: u32, remaps: Vec<Remap>)

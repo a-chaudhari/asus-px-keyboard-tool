@@ -1,0 +1,11 @@
+[Unit]
+Description=restore px hotkey settings on sleep wake
+After=sleep.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/asus-px-keyboard-tool /etc/asus-px-keyboard-tool.conf restore
+TimeoutSec=5
+
+[Install]
+WantedBy=sleep.target multi-user.target

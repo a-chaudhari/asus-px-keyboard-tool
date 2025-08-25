@@ -1,0 +1,11 @@
+[Unit]
+Description=asus px kb tool
+Requires=asus-px-keyboard-toolrestore.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/asus-px-keyboard-tool /etc/asus-px-keyboard-tool.conf
+TimeoutSec=5
+
+[Install]
+WantedBy=default.target
