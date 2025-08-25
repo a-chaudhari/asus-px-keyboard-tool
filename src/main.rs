@@ -48,7 +48,10 @@ fn main() {
     } else {
         println!("BPF disabled in config");
     }
-    let input_device = Device::new_from_path(dev_info.input_device_path).unwrap();
+    // open file as blocking to save cpu cycles
+    let file = std::fs::File::open(&dev_info.input_device_path)
+        .expect(&format!("Failed to open input device: {}", &dev_info.input_device_path));
+    let input_device = Device::new_from_file(file).unwrap();
     let mut state= false;
 
     if config.fnlock.enabled {
@@ -81,7 +84,7 @@ fn main() {
     }
 
     loop {
-        let ev = input_device.next_event(ReadFlag::NORMAL).map(|val| val.1);
+        let ev = input_device.next_event(ReadFlag::BLOCKING).map(|val| val.1);
         match ev {
             Ok(ev) => {
                 // check for kb_illum_toggle keycode
