@@ -1,0 +1,19 @@
+[bpf]
+enabled = true
+remaps = [
+    { from = 0x4e, to = 0x5c }, # fn-lock (fn + esc) -> key_prog3
+    { from = 0x7e, to = 0xba }, # emoji picker key -> key_prog2
+    { from = 0x8b, to = 0x38 }, # proart hub key -> key_prog1
+]
+
+[compatibility]
+keyd = false
+
+[fnlock]
+enabled = true
+keycode = "KEY_PROG3"
+default = "last" # "last", "on", "off"
+
+[kb_brightness_cycle]
+enabled = true
+keycode = "KEY_KBDILLUMTOGGLE"

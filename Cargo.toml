@@ -6,3 +6,6 @@ edition = "2024"
 [dependencies]
 hidapi = "2.6.3"
 cc = "1.0"
+evdev-rs = "0.6.2"
+config = "0.15.14"
+serde = { version = "1.0.219", features = ["derive"] }

@@ -2,13 +2,13 @@ use std::ffi::CString;
 use hidapi::HidApi;
 
 pub struct HidDeviceInfo {
-    hid_id: u32,
-    input_device_path: String,
-    hidraw_device_path: String,
+    pub hid_id: u32,
+    pub input_device_path: String,
+    pub hidraw_device_path: String,
 }
 
-pub fn toggle_fn_lock(hid_path: String, new_state: bool) {
-    let c_string = CString::new(hid_path).expect("CString::new failed");
+pub fn toggle_fn_lock(hid_path: &String, new_state: bool) {
+    let c_string = CString::new(hid_path.clone()).expect("CString::new failed");
     let c_str = c_string.as_c_str();
 
     // Open the HID device at the specified path
@@ -34,7 +34,8 @@ pub fn toggle_fn_lock(hid_path: String, new_state: bool) {
     }
 }
 
-pub fn get_hardware_info() -> HidDeviceInfo{
+pub fn get_hardware_info(keyd_mode: bool) -> HidDeviceInfo{
+    // TODO implement keyd mode
     let syspath = "/sys/bus/hid/devices";
     let target = "0B05:19B6";
     // read in directory to find the target
@@ -71,6 +72,7 @@ pub fn get_hardware_info() -> HidDeviceInfo{
                 retval.hid_id = hid_id;
 
                 // now find the event device path in input subdirectory
+                // TODO implement keyd mode
                 let input_dir_path = format!("{}/input", full_path);
                 let input_entries = std::fs::read_dir(input_dir_path)
                     .expect("Failed to read input directory");
