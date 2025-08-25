@@ -42,6 +42,9 @@ fn main() {
 
     let config = get_config(config_path);
     let dev_info = hid::get_hardware_info(config.compatibility.keyd);
+    println!("HID ID: {}", dev_info.hid_id);
+    println!("Using device: {}", dev_info.input_device_path);
+    println!("HIDRAW device: {}", dev_info.hidraw_device_path);
     if config.bpf.enabled {
         println!("Starting BPF with remaps: {:?}", config.bpf.remaps);
         start_bpf(dev_info.hid_id, config.bpf.remaps);

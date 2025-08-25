@@ -80,6 +80,59 @@ fn get_input_device_path(bus_path: String) -> String {
     panic!("No matching input device found");
 }
 
+fn get_keyd_input_path(vid: &str, pid: &str) -> String {
+    // loop through /sys/devices/virtual/input and check the pid and vid
+    // then use that to find the event path
+    let syspath = "/sys/devices/virtual/input";
+    let entries = std::fs::read_dir(syspath)
+        .expect("Failed to read /sys/devices/virtual/input directory");
+    for entry in entries {
+        let entry = entry.expect("Failed to read entry");
+        let file_name = entry.file_name();
+        let file_name_str = file_name.to_str()
+            .expect("Failed to convert file name to string");
+        let full_path = format!("{}/{}", syspath, file_name_str);
+        let uevent_path = format!("{}/uevent", full_path);
+        let uevent_content = std::fs::read_to_string(uevent_path)
+            .expect("Failed to read uevent file");
+        let mut found_vid = false;
+        let mut found_pid = false;
+        for line in uevent_content.lines() {
+            if line.starts_with("PRODUCT=") {
+                let parts: Vec<&str> = line["PRODUCT=".len()..].split('/').collect();
+                if parts.len() >= 2 {
+                    if parts[1].eq_ignore_ascii_case(vid) {
+                        found_vid = true;
+                    }
+                    if parts[2].eq_ignore_ascii_case(pid) {
+                        found_pid = true;
+                    }
+
+                    if found_vid && found_pid {
+                        break;
+                    }
+                }
+            }
+        }
+        if found_vid && found_pid {
+            // now find the event path in that folder
+            let event_entries = std::fs::read_dir(full_path)
+                .expect("Failed to read event directory");
+            for event_entry in event_entries {
+                let event_entry = event_entry.expect("Failed to read event entry");
+                let event_file_name = event_entry.file_name();
+                let event_file_name_str = event_file_name.to_str()
+                    .expect("Failed to convert event file name to string");
+                if event_file_name_str.starts_with("event") {
+                    let event_full_path = format!("/dev/input/{}", event_file_name_str);
+                    return event_full_path;
+                }
+            }
+        }
+    }
+    panic!("No matching virtual input device found");
+}
+
 fn get_bus_path(vid_pid: &str, descriptor_check: bool) -> String {
     let syspath = "/sys/bus/hid/devices";
     // read in directory to find the target
@@ -128,11 +181,9 @@ pub fn get_hardware_info(keyd_mode: bool) -> HidDeviceInfo{
     let asus_bus_path = get_bus_path(asus_ids, true);
 
     if keyd_mode {
-        let keyd_ids = "0FAC:0ADE"; //
-        let keyd_bus_path = get_bus_path(keyd_ids, false);
         return HidDeviceInfo {
             hid_id: parse_hid_id(asus_bus_path.clone()),
-            input_device_path: get_input_device_path(keyd_bus_path.clone()),
+            input_device_path: get_keyd_input_path("fac", "ade"),
             hidraw_device_path: get_hidraw_path(asus_bus_path.clone()),
         }
     }
