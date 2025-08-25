@@ -11,7 +11,7 @@ A tool to fix missing functionality in Asus PX keyboards on Linux. Parts of this
 ## Installation
 - run the install.sh script `sudo ./install.sh`
 - modify the config file at `/etc/asus-px-keyboard-tool.conf`
-  - see the config section below!
+  - ⚠️ see the config section below. very important!
 - enable the systemd service with `systemctl enable --now asus-px-keyboard-tool.service`
 
 ## Uninstallation
