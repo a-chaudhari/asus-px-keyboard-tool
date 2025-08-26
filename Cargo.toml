@@ -2,6 +2,12 @@
 name = "asus-px-keyboard-tool"
 version = "0.1.0"
 edition = "2024"
+authors = ["Amit Chaudhari"]
+description = "A tool to improve the functionality of the ASUS PX keyboard in Linux."
+readme = "Readme.md"
+repository = "https://github.com/a-chaudhari/asus-px-keyboard-tool"
+categories = ["command-line-utilities", "hardware-support"]
+keywords = ["asus", "keyboard", "linux", "hid", "evdev"]
 
 [dependencies]
 hidapi = "2.6.3"
