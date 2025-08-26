@@ -51,8 +51,8 @@ keycode = "KEY_PROG4"
 ## Creating your own BPF remaps
 
 ### TL;DR
-1. Find which scancodes are being sent by the ignored keys. The tool will print all detected scancodes.
-   * currently the tool only prints scancodes when running manually in a terminal.  Future versions will log to journal
+1. Find which scancodes are being sent by the ignored keys. The tool will log all detected scancodes.
+    * `journalctl -f -u asus-px-keyboard-tool` 
 2. Look at the hid-asus driver source code to find supported scancodes and their corresponding keycodes.
    * https://github.com/torvalds/linux/blob/1b237f190eb3d36f52dffe07a40b5eb210280e00/drivers/hid/hid-asus.c#L964-L992
 3. Pick a supported scancode that you don't care about and note its keycode.

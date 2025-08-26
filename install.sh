@@ -22,3 +22,5 @@ if [ -f /etc/asus-px-keyboard-tool.conf ]; then
 else
   install -m 644 -v asus-px-keyboard-tool.conf /etc/
 fi
+
+systemctl daemon-reload

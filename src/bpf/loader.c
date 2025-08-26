@@ -14,11 +14,13 @@ pthread_t ringbuf_polling_thread;
 int handle_event(void *ctx, void *data, size_t data_sz)
 {
     const struct event_log_entry *e = data;
+    if (e->original == 0xec)
+        return 0; // 0xec appears to be some sort of status report.  ignoring it
     if (e->remapped)
-        printf("Remapped: %x -> %x\n", e->original, e->new);
+        printf("BPF: Remapped: 0x%02x -> 0x%02x\n", e->original, e->new);
     else
-        printf("Detected unmapped scancode: %x\n", e->original);
-
+        printf("BPF: Detected unmapped scancode: 0x%02x\n", e->original);
+    fflush(stdout);
     return 0;
 }
 
@@ -26,7 +28,8 @@ void *poll_ringbuf( void *ptr )
 {
     int err;
     struct ring_buffer *rb = ptr;
-    printf("Starting ringbuf polling thread\n");
+    printf("BPF: Starting ringbuf polling thread\n");
+    fflush(stdout);
     while (1)
     {
         err = ring_buffer__poll(rb, 100 /* timeout, ms */);
@@ -36,11 +39,12 @@ void *poll_ringbuf( void *ptr )
             break;
         }
         if (err < 0) {
-            printf("Error polling ring buffer: %d\n", err);
+            printf("BPF: Error polling ring buffer: %d\n", err);
+            fflush(stdout);
             break;
         }
     }
-    printf("Exiting polling thread\n");
+    printf("BPF: Exiting polling thread\n");
     return nullptr;
 }
 
@@ -59,7 +63,7 @@ int run_bpf(int hid_id, const int *remap_array, int remap_count)
     // Open and load the BPF program
     skel = hid_modify_bpf__open();
     if (!skel) {
-        fprintf(stderr, "Failed to open BPF skeleton\n");
+        fprintf(stderr, "BPF: Failed to open BPF skeleton\n");
         return -1;
     }
 
@@ -67,21 +71,21 @@ int run_bpf(int hid_id, const int *remap_array, int remap_count)
 
     err = hid_modify_bpf__load(skel);
     if (err) {
-        fprintf(stderr, "Failed to load BPF skeleton\n");
+        fprintf(stderr, "BPF: Failed to load BPF skeleton\n");
         return -1;
    }
 
     // Attach to HID device
     err = hid_modify_bpf__attach(skel);
     if (err) {
-        fprintf(stderr, "Failed to attach BPF program\n");
+        fprintf(stderr, "BPF: Failed to attach BPF program\n");
         hid_modify_bpf__destroy(skel);
         return -1;
     }
 
     map_fd = bpf_map__fd(skel->maps.remap_map);
     if (map_fd < 0) {
-        fprintf(stderr, "Failed to get map fd\n");
+        fprintf(stderr, "BPF: Failed to get map fd\n");
         hid_modify_bpf__destroy(skel);
         return -1;
     }
@@ -90,7 +94,8 @@ int run_bpf(int hid_id, const int *remap_array, int remap_count)
     {
         const int *from_code = remap_array + i * 2;
         const int *to_code = remap_array + i * 2 + 1;
-        printf("Remapped: %x -> %x\n", *from_code, *to_code);
+        printf("BPF: Remapped: %x -> %x\n", *from_code, *to_code);
+        fflush(stdout);
         bpf_map_update_elem(map_fd,
             from_code,
             to_code,
@@ -100,7 +105,7 @@ int run_bpf(int hid_id, const int *remap_array, int remap_count)
     /* Set up ring buffer polling */
     rb = ring_buffer__new(bpf_map__fd(skel->maps.event_rb), handle_event, NULL, nullptr);
     if (!rb) {
-        fprintf(stderr, "Failed to create ring buffer\n");
+        fprintf(stderr, "BPF: Failed to create ring buffer\n");
         return -1;
     }
 
