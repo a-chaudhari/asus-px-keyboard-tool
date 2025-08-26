@@ -18,24 +18,21 @@ A tool to fix missing functionality in Asus PX keyboards on Linux. Parts of this
 The uninstall script will clean up all files. `sudo ./uninstall.sh`
 
 ## Configuration
-The default config shipped is a (hopefully) a minimal and safe config that should work on most devices.  However, to get 
-most value, you should enable the additional features.
+The default config shipped is optimized for a PX13 or PX16 laptop.  Other asus models can still use this tool, but should try with the minimal config below as a starting point.
 
-Submit an issue if you have problems with the default config or need help customizing it.  Admittedly I'm still working 
-on documentation.
+Submit an issue if you have problems with the default config or need help customizing it.  Admittedly I'm still working config on documentation.
 
-PX 13/16 users should use the following config to enable all features:
 ```
 # TOML configuration file for asus-px-keyboard-tool
-# optimized for PX13 and PX16 laptops
+# minimal config
 
 [bpf]
 enabled = true
 remaps = [
     { from = 0x4e, to = 0x5c }, # fn-lock (fn + esc) -> key_prog3
-    { from = 0x7e, to = 0xba }, # emoji picker key -> key_prog2
-    { from = 0x8b, to = 0x38 }, # proart hub key -> key_prog1
-    { from = 0xc7, to = 0x99 }, # kb backlight key -> key_prog4
+#    { from = 0x7e, to = 0xba }, # emoji picker key -> key_prog2
+#    { from = 0x8b, to = 0x38 }, # proart hub key -> key_prog1
+#    { from = 0xc7, to = 0x99 }, # kb backlight key -> key_prog4
 ]
 
 [compatibility]
@@ -47,7 +44,7 @@ keycode = "KEY_PROG3"
 boot_default = "last" # "last", "on", "off"
 
 [kb_brightness_cycle]
-enabled = true
+enabled = false
 keycode = "KEY_PROG4"
 ```
 
