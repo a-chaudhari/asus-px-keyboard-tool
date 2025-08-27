@@ -2,8 +2,8 @@
 // Created by amitchaudhari on 8/21/25.
 //
 
-#ifndef BPF_COMMON_H
-#define BPF_COMMON_H
+#ifndef HID_MODIFY_BPF_H
+#define HID_MODIFY_BPF_H
 
 #define MAX_PATH 512
 
@@ -24,4 +24,4 @@ typedef struct {
 } hid_device_info_t;
 
 
-#endif //BPF_COMMON_H
+#endif //HID_MODIFY_BPF_H

@@ -1,7 +1,7 @@
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
-#include "common.h"
+#include "hid_modify.bpf.h"
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -14,6 +14,9 @@ struct{
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 4096); // 4kb, needs to be mult of page size
 } event_rb SEC(".maps");
+
+// Dummy instance to get skeleton to generate definition
+struct event_log_entry _dummy = {0};
 
 SEC("struct_ops/hid_bpf_device_event")
 int BPF_PROG(modify_hid_event, struct hid_bpf_ctx *hid_ctx)

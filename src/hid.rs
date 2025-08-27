@@ -29,7 +29,7 @@ pub fn toggle_fn_lock(hid_path: &String, new_state: bool) {
 
     // Send the feature report
     match handle.send_feature_report(&feature_report) {
-        Ok(_) => println!("Feature report sent successfully!"),
+        Ok(_) => println!("Fn-Lock command sent successfully!"),
         Err(e) => eprintln!("Error sending feature report: {}", e),
     }
 }
