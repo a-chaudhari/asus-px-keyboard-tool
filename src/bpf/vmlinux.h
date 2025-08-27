@@ -7268,7 +7268,6 @@ enum {
 	PROC_ENTRY_PERMANENT = 1,
 	PROC_ENTRY_proc_read_iter = 2,
 	PROC_ENTRY_proc_compat_ioctl = 4,
-	PROC_ENTRY_proc_lseek = 8,
 };
 
 enum {
@@ -42898,7 +42897,7 @@ struct audit_context {
 			int argc;
 		} execve;
 		struct {
-			const char *name;
+			char *name;
 		} module;
 		struct {
 			struct audit_ntp_data ntp_data;
@@ -46048,7 +46047,7 @@ struct btf;
 
 struct obj_cgroup;
 
-struct bpf_map_owner;
+struct btf_type;
 
 struct bpf_map {
 	const struct bpf_map_ops *ops;
@@ -46077,15 +46076,19 @@ struct bpf_map {
 		struct callback_head rcu;
 	};
 	atomic64_t writecnt;
-	spinlock_t owner_lock;
-	struct bpf_map_owner *owner;
+	struct {
+		const struct btf_type *attach_func_proto;
+		spinlock_t lock;
+		enum bpf_prog_type type;
+		bool jited;
+		bool xdp_has_frags;
+	} owner;
 	bool bypass_spec_v1;
 	bool frozen;
 	bool free_after_mult_rcu_gp;
 	bool free_after_rcu_gp;
 	atomic64_t sleepable_refcnt;
 	s64 *elem_count;
-	u64 cookie;
 };
 
 struct range_tree {
@@ -46173,8 +46176,6 @@ struct btf_func_model {
 	u8 arg_size[12];
 	u8 arg_flags[12];
 };
-
-struct btf_type;
 
 struct bpf_attach_target_info {
 	struct btf_func_model fmodel;
@@ -49082,14 +49083,6 @@ struct bpf_map_ops {
 	u64 (*map_mem_usage)(const struct bpf_map *);
 	int *map_btf_id;
 	const struct bpf_iter_seq_info *iter_seq_info;
-};
-
-struct bpf_map_owner {
-	enum bpf_prog_type type;
-	bool jited;
-	bool xdp_has_frags;
-	u64 storage_cookie[2];
-	const struct btf_type *attach_func_proto;
 };
 
 struct rcuwait {
@@ -75422,7 +75415,6 @@ struct eventpoll {
 	struct file *file;
 	u64 gen;
 	struct hlist_head refs;
-	u8 loop_check_depth;
 	refcount_t refcount;
 	unsigned int napi_id;
 	u32 busy_poll_usecs;
@@ -78910,10 +78902,7 @@ struct files_struct {
 
 struct filter_head {
 	struct list_head list;
-	union {
-		struct callback_head rcu;
-		struct rcu_work rwork;
-	};
+	struct callback_head rcu;
 };
 
 struct filter_list {
@@ -98917,6 +98906,7 @@ struct kvm_x86_ops {
 	void (*get_gdt)(struct kvm_vcpu *, struct desc_ptr *);
 	void (*set_gdt)(struct kvm_vcpu *, struct desc_ptr *);
 	void (*sync_dirty_debug_regs)(struct kvm_vcpu *);
+	void (*set_dr6)(struct kvm_vcpu *, long unsigned int);
 	void (*set_dr7)(struct kvm_vcpu *, long unsigned int);
 	void (*cache_reg)(struct kvm_vcpu *, enum kvm_reg);
 	long unsigned int (*get_rflags)(struct kvm_vcpu *);
@@ -98929,7 +98919,7 @@ struct kvm_x86_ops {
 	void (*flush_tlb_gva)(struct kvm_vcpu *, gva_t);
 	void (*flush_tlb_guest)(struct kvm_vcpu *);
 	int (*vcpu_pre_run)(struct kvm_vcpu *);
-	enum exit_fastpath_completion (*vcpu_run)(struct kvm_vcpu *, u64);
+	enum exit_fastpath_completion (*vcpu_run)(struct kvm_vcpu *, bool);
 	int (*handle_exit)(struct kvm_vcpu *, enum exit_fastpath_completion);
 	int (*skip_emulated_instruction)(struct kvm_vcpu *);
 	void (*update_emulated_instruction)(struct kvm_vcpu *);
@@ -101243,9 +101233,11 @@ struct match_token {
 };
 
 struct match_workbuf {
+	unsigned int count;
 	unsigned int pos;
 	unsigned int len;
-	unsigned int history[32];
+	unsigned int size;
+	unsigned int history[24];
 };
 
 struct math_emu_info {
@@ -107527,7 +107519,6 @@ struct net_devmem_dmabuf_binding {
 	struct list_head list;
 	struct xarray bound_rxqs;
 	u32 id;
-	enum dma_data_direction direction;
 	struct net_iov **tx_vec;
 	struct work_struct unbind_w;
 };
@@ -112093,6 +112084,20 @@ struct parallel_data {
 	unsigned int processed;
 	int cpu;
 	struct padata_cpumask cpumask;
+	struct work_struct reorder_work;
+	long: 64;
+	long: 64;
+	long: 64;
+	long: 64;
+	long: 64;
+	spinlock_t lock;
+	long: 64;
+	long: 64;
+	long: 64;
+	long: 64;
+	long: 64;
+	long: 64;
+	long: 64;
 };
 
 struct thermal_genl_cpu_caps;
@@ -117617,6 +117622,7 @@ struct psi_group {
 };
 
 struct psi_group_cpu {
+	seqcount_t seq;
 	unsigned int tasks[4];
 	u32 state_mask;
 	u32 times[8];
@@ -136102,6 +136108,11 @@ struct trace_event_data_offsets_power_domain {
 	const void *name_ptr_;
 };
 
+struct trace_event_data_offsets_powernv_throttle {
+	u32 reason;
+	const void *reason_ptr_;
+};
+
 struct trace_event_data_offsets_prq_report {
 	u32 iommu;
 	const void *iommu_ptr_;
@@ -142008,6 +142019,14 @@ struct trace_event_raw_power_domain {
 	u32 __data_loc_name;
 	u64 state;
 	u64 cpu_id;
+	char __data[0];
+};
+
+struct trace_event_raw_powernv_throttle {
+	struct trace_entry ent;
+	int chip_id;
+	u32 __data_loc_reason;
+	int pmax;
 	char __data[0];
 };
 
@@ -156216,6 +156235,8 @@ typedef void (*btf_trace_posix_lock_inode)(void *, struct inode *, struct file_l
 
 typedef void (*btf_trace_power_domain_target)(void *, const char *, unsigned int, unsigned int);
 
+typedef void (*btf_trace_powernv_throttle)(void *, int, const char *, int);
+
 typedef void (*btf_trace_prq_report)(void *, struct intel_iommu *, struct device *, u64, u64, u64, u64, long unsigned int);
 
 typedef void (*btf_trace_psci_domain_idle_enter)(void *, unsigned int, unsigned int, bool);
@@ -157393,7 +157414,6 @@ extern struct bpf_list_node *bpf_list_back(struct bpf_list_head *head) __weak __
 extern struct bpf_list_node *bpf_list_front(struct bpf_list_head *head) __weak __ksym;
 extern struct bpf_list_node *bpf_list_pop_back(struct bpf_list_head *head) __weak __ksym;
 extern struct bpf_list_node *bpf_list_pop_front(struct bpf_list_head *head) __weak __ksym;
-extern int bpf_list_push_back_impl(struct bpf_list_head *head, struct bpf_list_node *node, void *meta__ign, u64 off) __weak __ksym;
 extern void bpf_local_irq_restore(long unsigned int *flags__irq_flag) __weak __ksym;
 extern void bpf_local_irq_save(long unsigned int *flags__irq_flag) __weak __ksym;
 extern struct bpf_key *bpf_lookup_system_key(u64 id) __weak __ksym;
@@ -157471,11 +157491,9 @@ extern void cubictcp_state(struct sock *sk, u8 new_state) __weak __ksym;
 extern struct hid_bpf_ctx *hid_bpf_allocate_context(unsigned int hid_id) __weak __ksym;
 extern __u8 *hid_bpf_get_data(struct hid_bpf_ctx *ctx, unsigned int offset, const size_t rdwr_buf_size) __weak __ksym;
 extern int hid_bpf_hw_output_report(struct hid_bpf_ctx *ctx, __u8 *buf, size_t buf__sz) __weak __ksym;
-extern int hid_bpf_hw_request(struct hid_bpf_ctx *ctx, __u8 *buf, size_t buf__sz, enum hid_report_type rtype, enum hid_class_request reqtype) __weak __ksym;
 extern int hid_bpf_input_report(struct hid_bpf_ctx *ctx, enum hid_report_type type, u8 *buf, const size_t buf__sz) __weak __ksym;
 extern void hid_bpf_release_context(struct hid_bpf_ctx *ctx) __weak __ksym;
 extern int hid_bpf_try_input_report(struct hid_bpf_ctx *ctx, enum hid_report_type type, u8 *buf, const size_t buf__sz) __weak __ksym;
-extern bool scx_bpf_consume(u64 dsq_id) __weak __ksym;
 extern int scx_bpf_cpu_node(s32 cpu) __weak __ksym;
 extern struct rq *scx_bpf_cpu_rq(s32 cpu) __weak __ksym;
 extern u32 scx_bpf_cpuperf_cap(s32 cpu) __weak __ksym;
@@ -157483,12 +157501,10 @@ extern u32 scx_bpf_cpuperf_cur(s32 cpu) __weak __ksym;
 extern void scx_bpf_cpuperf_set(s32 cpu, u32 perf) __weak __ksym;
 extern s32 scx_bpf_create_dsq(u64 dsq_id, s32 node) __weak __ksym;
 extern void scx_bpf_destroy_dsq(u64 dsq_id) __weak __ksym;
-extern void scx_bpf_dispatch(struct task_struct *p, u64 dsq_id, u64 slice, u64 enq_flags) __weak __ksym;
 extern void scx_bpf_dispatch_cancel(void) __weak __ksym;
-extern bool scx_bpf_dispatch_from_dsq(struct bpf_iter_scx_dsq *it__iter, struct task_struct *p, u64 dsq_id, u64 enq_flags) __weak __ksym;
-extern void scx_bpf_dispatch_from_dsq_set_slice(struct bpf_iter_scx_dsq *it__iter, u64 slice) __weak __ksym;
-extern void scx_bpf_dispatch_from_dsq_set_vtime(struct bpf_iter_scx_dsq *it__iter, u64 vtime) __weak __ksym;
 extern u32 scx_bpf_dispatch_nr_slots(void) __weak __ksym;
+extern void scx_bpf_dispatch_vtime(struct task_struct *p, u64 dsq_id, u64 slice, u64 vtime, u64 enq_flags) __weak __ksym;
+extern bool scx_bpf_dispatch_vtime_from_dsq(struct bpf_iter_scx_dsq *it__iter, struct task_struct *p, u64 dsq_id, u64 enq_flags) __weak __ksym;
 extern void scx_bpf_dsq_insert(struct task_struct *p, u64 dsq_id, u64 slice, u64 enq_flags) __weak __ksym;
 extern void scx_bpf_dsq_insert_vtime(struct task_struct *p, u64 dsq_id, u64 slice, u64 vtime, u64 enq_flags) __weak __ksym;
 extern bool scx_bpf_dsq_move(struct bpf_iter_scx_dsq *it__iter, struct task_struct *p, u64 dsq_id, u64 enq_flags) __weak __ksym;
@@ -157517,7 +157533,6 @@ extern s32 scx_bpf_pick_idle_cpu(const struct cpumask *cpus_allowed, u64 flags) 
 extern s32 scx_bpf_pick_idle_cpu_node(const struct cpumask *cpus_allowed, int node, u64 flags) __weak __ksym;
 extern void scx_bpf_put_cpumask(const struct cpumask *cpumask) __weak __ksym;
 extern void scx_bpf_put_idle_cpumask(const struct cpumask *idle_mask) __weak __ksym;
-extern u32 scx_bpf_reenqueue_local(void) __weak __ksym;
 extern s32 scx_bpf_select_cpu_and(struct task_struct *p, s32 prev_cpu, u64 wake_flags, const struct cpumask *cpus_allowed, u64 flags) __weak __ksym;
 extern s32 scx_bpf_select_cpu_dfl(struct task_struct *p, s32 prev_cpu, u64 wake_flags, bool *is_idle) __weak __ksym;
 extern struct cgroup *scx_bpf_task_cgroup(struct task_struct *p) __weak __ksym;

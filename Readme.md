@@ -29,10 +29,10 @@ Submit an issue if you have problems with the default config or need help custom
 [bpf]
 enabled = true
 remaps = [
-    { from = 0x4e, to = 0x5c }, # fn-lock (fn + esc) -> key_prog3
+    { from = 0x4e, to = 0x99 }, # fn-lock (fn + esc) -> key_prog4
 #    { from = 0x7e, to = 0xba }, # emoji picker key -> key_prog2
 #    { from = 0x8b, to = 0x38 }, # proart hub key -> key_prog1
-#    { from = 0xc7, to = 0x99 }, # kb backlight key -> key_prog4
+#    { from = 0xc7, to = 0x5c }, # kb backlight key -> key_prog3
 ]
 
 [compatibility]
@@ -40,12 +40,12 @@ keyd = false # only enable if you use keyd
 
 [fnlock]
 enabled = true
-keycode = "KEY_PROG3"
+keycode = "KEY_PROG4"
 boot_default = "last" # "last", "on", "off"
 
 [kb_brightness_cycle]
 enabled = false
-keycode = "KEY_PROG4"
+keycode = "KEY_PROG3"
 ```
 
 ## Creating your own BPF remaps
@@ -83,11 +83,10 @@ Then you can pick the ones you don't care about and remap your ignored keys to t
 ### Main Tool
 Most of the codebase is written in rust.  So it requires a Rust toolchain.  Then run `cargo build`.  The binary will be at `target/debug/asus-px-keyboard-tool`.
 ### BPF Program
-The bpf program is written in C and compiled with clang. You'll likely need additional packages from your distro to build it.
+The bpf program is written in C and compiled with clang. Cargo (rust build tool) will compile it automatically when you build the main tool.
+```
 
 Non-exhaustive list:
 - libbpf-dev
 - clang
-- gcc
-- make
 - linux-headers
