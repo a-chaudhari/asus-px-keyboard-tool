@@ -84,9 +84,9 @@ Then you can pick the ones you don't care about and remap your ignored keys to t
 Most of the codebase is written in rust.  So it requires a Rust toolchain.  Then run `cargo build`.  The binary will be at `target/debug/asus-px-keyboard-tool`.
 ### BPF Program
 The bpf program is written in C and compiled with clang. Cargo (rust build tool) will compile it automatically when you build the main tool.
-```
 
-Non-exhaustive list:
+Non-exhaustive list of dependencies:
+- rust (with cargo)
 - libbpf-dev
 - clang
 - linux-headers
