@@ -43,7 +43,7 @@ pub fn get_config(path: &str) -> ConfigWrapper {
     let settings = config::Config::builder()
         // Load defaults from embedded string
         .add_source(File::from_str(DEFAULT_CONFIG, FileFormat::Toml))
-        .add_source(config::File::with_name(path).format(config::FileFormat::Toml))
+        .add_source(config::File::with_name(path).format(FileFormat::Toml))
         .build()
         .unwrap();
     settings.try_deserialize::<ConfigWrapper>().unwrap()

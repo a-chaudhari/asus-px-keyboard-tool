@@ -11,12 +11,10 @@ keywords = ["asus", "keyboard", "linux", "hid", "evdev"]
 
 [dependencies]
 hidapi = "2.6.3"
-cc = "1.0"
 evdev-rs = "0.6.2"
 config = "0.15.14"
 serde = { version = "1.0.219", features = ["derive"] }
 libbpf-rs = "0.25"
-libc = "0.2"
 plain = "0.2"
 
 [build-dependencies]
