@@ -8,6 +8,13 @@ A tool to fix missing functionality in Asus PX keyboards on Linux. Parts of this
 - Adds support for the single-button keyboard backlight cycle key
 - Optional compatibility mode for keyd users
 
+## Building
+1. Download the code
+2. install dependencies
+   * fedora 42: `dnf install clang libevdev-devel libudev-devel elfutils-libelf-devel cargo`
+   * ubuntu 25.04: `apt install clang libevdev-dev libudev-dev libelf-dev make cargo`
+3. run `cargo build --release`
+
 ## Installation
 - run the install.sh script `sudo ./install.sh`
 - modify the config file at `/etc/asus-px-keyboard-tool.conf`
@@ -79,14 +86,8 @@ You can then use this keycode in your desktop environment or window manager to l
 By looking at the source code of the hid-asus driver, you can find out which scancodes are supported and what keycodes they map to.  
 Then you can pick the ones you don't care about and remap your ignored keys to those. 
 
-## Building
-### Main Tool
-Most of the codebase is written in rust.  So it requires a Rust toolchain.  Then run `cargo build`.  The binary will be at `target/debug/asus-px-keyboard-tool`.
-### BPF Program
-The bpf program is written in C and compiled with clang. Cargo (rust build tool) will compile it automatically when you build the main tool.
-
-Non-exhaustive list of dependencies:
-- rust (with cargo)
-- libbpf-dev
-- clang
-- linux-headers
+## TODO (maybe)
+- [ ] binary only packages
+- [ ] github releases
+- [ ] arch aur package
+- [ ] deb/rpm packages
