@@ -188,9 +188,15 @@ pub fn get_hardware_info(keyd_mode: bool) -> HidDeviceInfo{
         }
     }
 
-    HidDeviceInfo {
+    let info = HidDeviceInfo {
         hid_id: parse_hid_id(asus_bus_path.clone()),
         input_device_path: get_input_device_path(asus_bus_path.clone()),
         hidraw_device_path: get_hidraw_path(asus_bus_path.clone()),
-    }
+    };
+
+    println!("Hid ID: {}", info.hid_id);
+    println!("Input device path: {}", info.input_device_path);
+    println!("Hidraw device path: {}", info.hidraw_device_path);
+
+    info // return
 }
