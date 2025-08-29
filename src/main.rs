@@ -39,7 +39,31 @@ fn main() {
     }
 
     let config = get_config(config_path);
-    let dev_info = get_hardware_info(config.compatibility.keyd);
+    let mut dev_info = get_hardware_info(config.compatibility.keyd);
+    if config.compatibility.hid_id_override.is_some() {
+        println!(
+            "Overriding HID ID from {} to {}",
+            dev_info.hid_id,
+            config.compatibility.hid_id_override.unwrap()
+        );
+        dev_info.hid_id = config.compatibility.hid_id_override.unwrap();
+    }
+    if config.compatibility.hid_path_override.is_some() {
+        println!(
+            "Overriding HID path from {} to {}",
+            dev_info.hidraw_device_path,
+            config.compatibility.hid_path_override.as_ref().unwrap()
+        );
+        dev_info.hidraw_device_path = config.compatibility.hid_path_override.unwrap();
+    }
+    if config.compatibility.event_path_override.is_some() {
+        println!(
+            "Overriding event path from {} to {}",
+            dev_info.input_device_path,
+            config.compatibility.event_path_override.as_ref().unwrap()
+        );
+        dev_info.input_device_path = config.compatibility.event_path_override.unwrap();
+    }
     println!("HID ID: {}", dev_info.hid_id);
     println!("Using device: {}", dev_info.input_device_path);
     println!("HIDRAW device: {}", dev_info.hidraw_device_path);
