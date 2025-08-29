@@ -1,4 +1,5 @@
 use std::ffi::CString;
+use std::path::Path;
 use hidapi::HidApi;
 
 pub struct HidDeviceInfo {
@@ -32,105 +33,6 @@ pub fn toggle_fn_lock(hid_path: &String, new_state: bool) {
         Ok(_) => println!("Fn-Lock command sent successfully!"),
         Err(e) => eprintln!("Error sending feature report: {}", e),
     }
-}
-
-fn get_hidraw_path(bus_path: String) -> String {
-    let hidraw_dir_path = format!("{}/hidraw", bus_path);
-    let hidraw_entries = std::fs::read_dir(hidraw_dir_path)
-        .expect("Failed to read hidraw directory");
-    for hidraw_entry in hidraw_entries {
-        let hidraw_entry = hidraw_entry.expect("Failed to read hidraw entry");
-        let hidraw_file_name = hidraw_entry.file_name();
-        let hidraw_file_name_str = hidraw_file_name.to_str()
-            .expect("Failed to convert hidraw file name to string");
-        if hidraw_file_name_str.starts_with("hidraw") {
-            let hidraw_full_path = format!("/dev/{}", hidraw_file_name_str);
-            return hidraw_full_path;
-        }
-    }
-    panic!("No matching hidraw device found");
-}
-
-fn get_input_device_path(bus_path: String) -> String {
-    let input_dir_path = format!("{}/input", bus_path);
-    let input_entries = std::fs::read_dir(input_dir_path)
-        .expect("Failed to read input directory");
-    for input_entry in input_entries {
-        let input_entry = input_entry.expect("Failed to read input entry");
-        let input_file_name = input_entry.file_name();
-        let input_file_name_str = input_file_name.to_str()
-            .expect("Failed to convert input file name to string");
-        if input_file_name_str.starts_with("input") {
-            // now get the event path in that folder
-            let event_dir_path = format!("{}", input_entry.path().to_str().unwrap());
-            let event_entries = std::fs::read_dir(event_dir_path)
-                .expect("Failed to read event directory");
-            for event_entry in event_entries {
-                let event_entry = event_entry.expect("Failed to read event entry");
-                let event_file_name = event_entry.file_name();
-                let event_file_name_str = event_file_name.to_str()
-                    .expect("Failed to convert event file name to string");
-                if event_file_name_str.starts_with("event") {
-                    let event_full_path = format!("/dev/input/{}", event_file_name_str);
-                    return event_full_path;
-                }
-            }
-        }
-    }
-    panic!("No matching input device found");
-}
-
-fn get_keyd_input_path(vid: &str, pid: &str) -> String {
-    // loop through /sys/devices/virtual/input and check the pid and vid
-    // then use that to find the event path
-    let syspath = "/sys/devices/virtual/input";
-    let entries = std::fs::read_dir(syspath)
-        .expect("Failed to read /sys/devices/virtual/input directory");
-    for entry in entries {
-        let entry = entry.expect("Failed to read entry");
-        let file_name = entry.file_name();
-        let file_name_str = file_name.to_str()
-            .expect("Failed to convert file name to string");
-        let full_path = format!("{}/{}", syspath, file_name_str);
-        let uevent_path = format!("{}/uevent", full_path);
-        let uevent_content = std::fs::read_to_string(uevent_path)
-            .expect("Failed to read uevent file");
-        let mut found_vid = false;
-        let mut found_pid = false;
-        for line in uevent_content.lines() {
-            if line.starts_with("PRODUCT=") {
-                let parts: Vec<&str> = line["PRODUCT=".len()..].split('/').collect();
-                if parts.len() >= 2 {
-                    if parts[1].eq_ignore_ascii_case(vid) {
-                        found_vid = true;
-                    }
-                    if parts[2].eq_ignore_ascii_case(pid) {
-                        found_pid = true;
-                    }
-
-                    if found_vid && found_pid {
-                        break;
-                    }
-                }
-            }
-        }
-        if found_vid && found_pid {
-            // now find the event path in that folder
-            let event_entries = std::fs::read_dir(full_path)
-                .expect("Failed to read event directory");
-            for event_entry in event_entries {
-                let event_entry = event_entry.expect("Failed to read event entry");
-                let event_file_name = event_entry.file_name();
-                let event_file_name_str = event_file_name.to_str()
-                    .expect("Failed to convert event file name to string");
-                if event_file_name_str.starts_with("event") {
-                    let event_full_path = format!("/dev/input/{}", event_file_name_str);
-                    return event_full_path;
-                }
-            }
-        }
-    }
-    panic!("No matching virtual input device found");
 }
 
 fn get_bus_path(vid_pid: &str, descriptor_check: bool) -> String {
@@ -183,20 +85,94 @@ pub fn get_hardware_info(keyd_mode: bool) -> HidDeviceInfo{
     if keyd_mode {
         return HidDeviceInfo {
             hid_id: parse_hid_id(asus_bus_path.clone()),
-            input_device_path: get_keyd_input_path("fac", "ade"),
-            hidraw_device_path: get_hidraw_path(asus_bus_path.clone()),
+            input_device_path: get_keyd_event_path(),
+            hidraw_device_path: get_hidraw_path(),
         }
     }
 
     let info = HidDeviceInfo {
         hid_id: parse_hid_id(asus_bus_path.clone()),
-        input_device_path: get_input_device_path(asus_bus_path.clone()),
-        hidraw_device_path: get_hidraw_path(asus_bus_path.clone()),
+        input_device_path: get_normal_event_path(asus_bus_path.clone()),
+        hidraw_device_path: get_hidraw_path(),
     };
 
-    println!("Hid ID: {}", info.hid_id);
-    println!("Input device path: {}", info.input_device_path);
-    println!("Hidraw device path: {}", info.hidraw_device_path);
-
     info // return
+}
+
+fn get_normal_event_path(bus_path: String) -> String {
+    let hid_dev = udev::Device::from_syspath(Path::new(&bus_path))
+        .expect("Failed to create udev enumerator");
+
+    let mut enumerator = udev::Enumerator::new().expect("Failed to create udev enumerator");
+
+    enumerator.match_subsystem("input").unwrap();
+    enumerator.match_property("ID_VENDOR_ID", "0b05").unwrap();
+    enumerator.match_property("ID_MODEL_ID", "19b6").unwrap();
+    enumerator.match_parent(&hid_dev).unwrap();
+
+    for device in enumerator.scan_devices().expect("Failed to scan devices") {
+        let found = device.properties().find(|p| p.name() == "DEVNAME").map(|p| {
+            return p.value().to_owned();
+        });
+        if !found.is_none() {
+            return found.unwrap().into_string().unwrap();
+        }
+    }
+
+    panic!("No matching event device found");
+}
+
+
+fn get_keyd_event_path() -> String {
+    let mut enumerator = udev::Enumerator::new().expect("Failed to create udev enumerator");
+
+    enumerator.match_subsystem("input").unwrap();
+    enumerator.match_attribute("name", "keyd virtual keyboard").unwrap();
+
+    let mut parent_devpath = String::new();
+    for device in enumerator.scan_devices().expect("Failed to scan devices") {
+        let found = device.properties().find(|p| p.name() == "DEVPATH").map(|p| {
+            return p.value().to_owned();
+        });
+        if !found.is_none() {
+            parent_devpath = found.unwrap().into_string().unwrap();
+            break;
+        }
+    }
+
+    if parent_devpath.is_empty() {
+        panic!("No matching keyd parent device found");
+    }
+
+    // now find the event device under /sys/devices/virtual/input
+    let parent = udev::Device::from_syspath(Path::new(&format!("/sys{}", parent_devpath)))
+        .expect("Failed to create udev device from parent devpath");
+
+    let mut enumerator = udev::Enumerator::new().expect("Failed to create udev enumerator");
+    enumerator.match_subsystem("input").unwrap();
+    enumerator.match_parent(&parent).unwrap();
+    for device in enumerator.scan_devices().expect("Failed to scan devices") {
+        let found = device.properties().find(|p| p.name() == "DEVNAME").map(|p| {
+            println!("{}", p.value().to_str().unwrap());
+            return p.value().to_owned();
+        });
+        if !found.is_none() {
+            return found.unwrap().into_string().unwrap();
+        }
+    }
+
+    panic!("No matching keyd event device found");
+}
+
+fn get_hidraw_path() -> String{
+    let mut hid = HidApi::new().expect("HidApi::new failed");
+    hid.reset_devices().expect("HidApi::new failed");
+    hid.add_devices(0x0b05, 0x19b6).expect("Failed to add devices");
+    for device in hid.device_list() {
+        if device.usage() == 0x76 && device.usage_page() == 0xff31 {
+            println!("Found target device!");
+            return device.path().to_str().unwrap().to_string();
+        }
+    }
+    panic!("No matching HID device found");
 }

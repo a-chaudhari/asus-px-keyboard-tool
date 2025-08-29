@@ -6,7 +6,7 @@ mod state;
 
 use crate::apkt_config::get_config;
 use crate::bpf_loader::start_bpf;
-use crate::hid::toggle_fn_lock;
+use crate::hid::{get_hardware_info, toggle_fn_lock};
 use crate::kb_illumination::cycle;
 use crate::state::{load_state, save_state};
 use evdev_rs::Device;
@@ -39,7 +39,7 @@ fn main() {
     }
 
     let config = get_config(config_path);
-    let dev_info = hid::get_hardware_info(config.compatibility.keyd);
+    let dev_info = get_hardware_info(config.compatibility.keyd);
     println!("HID ID: {}", dev_info.hid_id);
     println!("Using device: {}", dev_info.input_device_path);
     println!("HIDRAW device: {}", dev_info.hidraw_device_path);

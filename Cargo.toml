@@ -16,6 +16,7 @@ config = "0.15.14"
 serde = { version = "1.0.219", features = ["derive"] }
 libbpf-rs = "0.25"
 plain = "0.2"
+udev = "^0.9.3"
 
 [build-dependencies]
 libbpf-cargo = "0.25"
