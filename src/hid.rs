@@ -1,6 +1,8 @@
+use std::option::Option;
 use std::ffi::CString;
 use std::path::Path;
 use hidapi::HidApi;
+use udev::Device;
 
 pub struct HidDeviceInfo {
     pub hid_id: u32,
@@ -129,24 +131,21 @@ fn get_keyd_event_path() -> String {
     enumerator.match_subsystem("input").unwrap();
     enumerator.match_attribute("name", "keyd virtual keyboard").unwrap();
 
-    let mut parent_devpath = String::new();
+    let mut maybe_parent: Option<Device> = None;
     for device in enumerator.scan_devices().expect("Failed to scan devices") {
         let found = device.properties().find(|p| p.name() == "DEVPATH").map(|p| {
             return p.value().to_owned();
         });
         if !found.is_none() {
-            parent_devpath = found.unwrap().into_string().unwrap();
+            maybe_parent = Some(device);
             break;
         }
     }
 
-    if parent_devpath.is_empty() {
+    if !Option::is_some(&maybe_parent) {
         panic!("No matching keyd parent device found");
     }
-
-    // now find the event device under /sys/devices/virtual/input
-    let parent = udev::Device::from_syspath(Path::new(&format!("/sys{}", parent_devpath)))
-        .expect("Failed to create udev device from parent devpath");
+    let parent = maybe_parent.unwrap();
 
     let mut enumerator = udev::Enumerator::new().expect("Failed to create udev enumerator");
     enumerator.match_subsystem("input").unwrap();
