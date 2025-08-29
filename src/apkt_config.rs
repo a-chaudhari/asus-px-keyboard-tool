@@ -10,6 +10,9 @@ pub struct Remap {
 #[derive(Debug, Deserialize)]
 pub struct CompatibilityConfig {
     pub keyd: bool,
+    pub hid_path_override: Option<String>,
+    pub hid_id_override: Option<u32>,
+    pub event_path_override: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
