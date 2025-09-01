@@ -32,7 +32,8 @@ pub fn start_bpf(hid_id: i32, remaps: Vec<Remap>) {
     unsafe {
         (*hid_modify_ops).hid_id = hid_id;
     }
-    let mut skel = open_skel.load().unwrap();
+    let mut skel = open_skel.load()
+        .expect("Failed to load skel.  Are you root?");
     let link = skel
         .maps
         .hid_modify_ops

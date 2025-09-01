@@ -6,7 +6,7 @@ A tool to fix missing functionality in Asus PX keyboards on Linux. Parts of this
   - like the emoji and proart keys!
 - Can listen for fn-lock key presses and toggle fn-lock state
 - Adds support for the single-button keyboard backlight cycle key
-- Optional compatibility mode for keyd users
+- Compatible with keyd
 
 ## Building
 1. Download the code
@@ -41,9 +41,6 @@ remaps = [
 #    { from = 0x8b, to = 0x38 }, # proart hub key -> key_prog1
 #    { from = 0xc7, to = 0x5c }, # kb backlight key -> key_prog3
 ]
-
-[compatibility]
-keyd = false # only enable if you use keyd
 
 [fnlock]
 enabled = true
