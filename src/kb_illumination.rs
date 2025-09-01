@@ -1,4 +1,5 @@
 static KB_BRIGHTNESS_PATH: &str = "/sys/class/leds/asus::kbd_backlight";
+static mut saved_value: Option<u32> = None;
 
 pub fn cycle() {
     println!("kb brightness cycle!");
@@ -10,6 +11,25 @@ pub fn cycle() {
         0
     };
     set_brightness(new_brightness);
+}
+
+pub fn toggle(state: bool) {
+    unsafe {
+        if !state {
+            // Save current brightness
+            if saved_value.is_none() {
+                saved_value = Some(get_current_brightness());
+            }
+            // Turn off keyboard backlight
+            set_brightness(0);
+        } else {
+            // Restore saved brightness
+            if let Some(value) = saved_value {
+                set_brightness(value);
+                saved_value = None;
+            }
+        }
+    }
 }
 
 fn get_max_brightness() -> u32 {

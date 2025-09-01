@@ -4,7 +4,7 @@ mod hid;
 mod kb_illumination;
 mod state;
 
-use evdev::{Device, KeyCode};
+use evdev::{Device, EventType, KeyCode, SwitchCode};
 use crate::apkt_config::get_config;
 use crate::bpf_loader::start_bpf;
 use crate::hid::{get_hardware_info, toggle_fn_lock};
@@ -147,6 +147,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             state = !state;
                             toggle_fn_lock(&str_pointer, state);
                             save_state(state);
+                        }
+                    } else if ev.event_type() == EventType::SWITCH {
+                        if ev.code() == SwitchCode::SW_TABLET_MODE.0 {
+                            if config.tablet_kb_backlight_disable.enabled {
+                                if ev.value() == 1 {
+                                    println!("Tablet mode enabled, disabling keyboard backlight");
+                                    kb_illumination::toggle(false);
+                                } else {
+                                    println!("Tablet mode disabled, restoring keyboard backlight");
+                                    kb_illumination::toggle(true);
+                                }
+                            }
                         }
                     }
                 }

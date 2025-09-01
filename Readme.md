@@ -6,6 +6,7 @@ A tool to fix missing functionality in Asus PX keyboards on Linux. Parts of this
   - like the emoji and proart keys!
 - Can listen for fn-lock key presses and toggle fn-lock state
 - Adds support for the single-button keyboard backlight cycle key
+- Can disable the kb backlight during tablet mode
 - Compatible with keyd
 
 ## Building

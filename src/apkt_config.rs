@@ -26,6 +26,7 @@ pub struct ConfigWrapper {
     pub compatibility: CompatibilityConfig,
     pub fnlock: FnLockConfig,
     pub bpf: BpfConfig,
+    pub tablet_kb_backlight_disable: TabletKbBacklightDisableConfig,
     pub kb_brightness_cycle: KbBrightnessConfig,
 }
 
@@ -39,6 +40,11 @@ pub struct BpfConfig {
 pub struct KbBrightnessConfig {
     pub enabled: bool,
     pub keycode: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TabletKbBacklightDisableConfig {
+    pub enabled: bool,
 }
 
 pub fn get_config(path: &str) -> ConfigWrapper {
@@ -66,4 +72,7 @@ boot_default = "last" # "last", "on", "off"
 [kb_brightness_cycle]
 enabled = false
 keycode = "KEY_PROG4"
+
+[tablet_kb_backlight_disable]
+enabled = false
 "#;
