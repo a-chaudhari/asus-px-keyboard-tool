@@ -1,6 +1,7 @@
 [Unit]
 Description=restore px hotkey settings on sleep wake
 After=sleep.target
+After=keyd.service
 
 [Service]
 Type=oneshot

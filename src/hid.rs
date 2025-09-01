@@ -1,12 +1,10 @@
-use std::option::Option;
 use std::ffi::CString;
-use std::path::Path;
+use evdev::KeyCode;
 use hidapi::HidApi;
-use udev::Device;
 
 pub struct HidDeviceInfo {
     pub hid_id: u32,
-    pub input_device_path: String,
+    pub possible_event_paths: Vec<String>,
     pub hidraw_device_path: String,
 }
 
@@ -37,7 +35,7 @@ pub fn toggle_fn_lock(hid_path: &String, new_state: bool) {
     }
 }
 
-fn get_bus_path(vid_pid: &str, descriptor_check: bool) -> String {
+fn get_bus_path(vid_pid: &str) -> String {
     let syspath = "/sys/bus/hid/devices";
     // read in directory to find the target
     let entries = std::fs::read_dir(syspath)
@@ -51,13 +49,9 @@ fn get_bus_path(vid_pid: &str, descriptor_check: bool) -> String {
         if file_name_str.contains(vid_pid) {
             let full_path = format!("{}/{}", syspath, file_name_str);
             // now check the report_descriptor file
-            if !descriptor_check {
-                return full_path;
-            }
             let report_descriptor_path = format!("{}/report_descriptor", full_path);
             let report_descriptor = std::fs::read(report_descriptor_path)
                 .expect("Failed to read report_descriptor file");
-            // let expected_descriptor: [u32; 9] = [0x06, 0x31, 0xff, 0x09, 0x76, 0xa1, 0x01, 0x85, 0x5a];
             let exp_bytes = [0x06, 0x31, 0xff, 0x09, 0x76, 0xa1, 0x01, 0x85, 0x5a].to_vec();
             // check if report_descriptor contains expected_descriptor bytes at any position
             let found = report_descriptor
@@ -80,87 +74,15 @@ fn parse_hid_id(bus_path: String) -> u32 {
     hid_id
 }
 
-pub fn get_hardware_info(keyd_mode: bool) -> HidDeviceInfo{
+pub fn get_hardware_info(target_key_codes: Vec<KeyCode>) -> HidDeviceInfo{
     let asus_ids = "0B05:19B6";
-    let asus_bus_path = get_bus_path(asus_ids, true);
+    let asus_bus_path = get_bus_path(asus_ids);
 
-    if keyd_mode {
-        return HidDeviceInfo {
-            hid_id: parse_hid_id(asus_bus_path.clone()),
-            input_device_path: get_keyd_event_path(),
-            hidraw_device_path: get_hidraw_path(),
-        }
-    }
-
-    let info = HidDeviceInfo {
-        hid_id: parse_hid_id(asus_bus_path.clone()),
-        input_device_path: get_normal_event_path(asus_bus_path.clone()),
+    HidDeviceInfo {
+        hid_id: parse_hid_id(asus_bus_path),
+        possible_event_paths: get_possible_event_paths(target_key_codes),
         hidraw_device_path: get_hidraw_path(),
-    };
-
-    info // return
-}
-
-fn get_normal_event_path(bus_path: String) -> String {
-    let hid_dev = udev::Device::from_syspath(Path::new(&bus_path))
-        .expect("Failed to create udev enumerator");
-
-    let mut enumerator = udev::Enumerator::new().expect("Failed to create udev enumerator");
-
-    enumerator.match_subsystem("input").unwrap();
-    enumerator.match_property("ID_VENDOR_ID", "0b05").unwrap();
-    enumerator.match_property("ID_MODEL_ID", "19b6").unwrap();
-    enumerator.match_parent(&hid_dev).unwrap();
-
-    for device in enumerator.scan_devices().expect("Failed to scan devices") {
-        let found = device.properties().find(|p| p.name() == "DEVNAME").map(|p| {
-            return p.value().to_owned();
-        });
-        if !found.is_none() {
-            return found.unwrap().into_string().unwrap();
-        }
     }
-
-    panic!("No matching event device found");
-}
-
-
-fn get_keyd_event_path() -> String {
-    let mut enumerator = udev::Enumerator::new().expect("Failed to create udev enumerator");
-
-    enumerator.match_subsystem("input").unwrap();
-    enumerator.match_attribute("name", "keyd virtual keyboard").unwrap();
-
-    let mut maybe_parent: Option<Device> = None;
-    for device in enumerator.scan_devices().expect("Failed to scan devices") {
-        let found = device.properties().find(|p| p.name() == "DEVPATH").map(|p| {
-            return p.value().to_owned();
-        });
-        if !found.is_none() {
-            maybe_parent = Some(device);
-            break;
-        }
-    }
-
-    if !Option::is_some(&maybe_parent) {
-        panic!("No matching keyd parent device found");
-    }
-    let parent = maybe_parent.unwrap();
-
-    let mut enumerator = udev::Enumerator::new().expect("Failed to create udev enumerator");
-    enumerator.match_subsystem("input").unwrap();
-    enumerator.match_parent(&parent).unwrap();
-    for device in enumerator.scan_devices().expect("Failed to scan devices") {
-        let found = device.properties().find(|p| p.name() == "DEVNAME").map(|p| {
-            println!("{}", p.value().to_str().unwrap());
-            return p.value().to_owned();
-        });
-        if !found.is_none() {
-            return found.unwrap().into_string().unwrap();
-        }
-    }
-
-    panic!("No matching keyd event device found");
 }
 
 fn get_hidraw_path() -> String{
@@ -174,4 +96,46 @@ fn get_hidraw_path() -> String{
         }
     }
     panic!("No matching HID device found");
+}
+
+fn get_possible_event_paths(target_key_codes: Vec<KeyCode>) -> Vec<String> {
+    let mut paths: Vec<String> = Vec::new();
+    if target_key_codes.len() == 0 {
+        return paths;
+    }
+
+    let mut enumerator = udev::Enumerator::new().expect("Failed to create udev enumerator");
+
+    enumerator.match_subsystem("input").unwrap();
+
+    for device in enumerator.scan_devices().expect("Failed to scan devices") {
+        let found = device.properties().find(|p| p.name() == "DEVNAME").map(|p| {
+            return p.value().to_owned();
+        });
+        if !found.is_none() {
+            let path = found.unwrap().into_string().unwrap();
+            // now check if this event device has the target key codes
+            let input_dev_res = evdev::Device::open(&path);
+            if input_dev_res.is_err() {
+                continue;
+            }
+            let input_dev = input_dev_res.expect("Failed to open input device");
+            if input_dev.supported_keys().is_none() {
+                continue;
+            }
+            let supported_keys = input_dev.supported_keys().unwrap();
+            let mut any_found = false;
+            for code in &target_key_codes {
+                if supported_keys.contains(*code) {
+                    any_found = true;
+                    break;
+                }
+            }
+            if any_found {
+                paths.push(path);
+            }
+        }
+    }
+
+    paths // return value
 }
