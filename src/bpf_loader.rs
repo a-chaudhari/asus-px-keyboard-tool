@@ -20,7 +20,7 @@ mod hid_modify {
 unsafe impl Plain for event_log_entry {}
 static mut LINK: Option<Link> = None;
 
-pub fn start_bpf(hid_id: i32, remaps: Vec<Remap>) {
+pub fn start_bpf(hid_id: i32, remaps: &Vec<Remap>) {
     let skel_builder = HidModifySkelBuilder::default();
     let mut open_object = MaybeUninit::uninit();
     let open_skel = skel_builder
