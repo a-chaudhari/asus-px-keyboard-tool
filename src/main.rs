@@ -111,23 +111,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let state_mutex = &Arc::new(Mutex::new(state));
 
-    for path in dev_info.possible_event_paths {
+    {
         let mut data = active_paths_mutex.write().await;
-        data.insert(path.clone());
-        start_device_thread(path.clone(), Arc::clone(config), Arc::clone(state_mutex), Arc::clone(dev_info_arc), Arc::clone(active_paths_mutex));
+        for path in &dev_info.possible_event_paths {
+            data.insert(path.clone());
+        }
     }
 
-    // Keep the main task alive
+    for path in &dev_info.possible_event_paths {
+        start_device_thread(path.clone(), Arc::clone(config), Arc::clone(state_mutex),
+                            Arc::clone(dev_info_arc), Arc::clone(active_paths_mutex));
+    }
+
+    // watch for new event devices every 2 seconds
     loop {
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-        let mut data = active_paths_mutex.write().await;
-        // println!("Active event device paths: {:?}", *data);
+        let mut to_add: Vec<String> = vec![];
+        {
+            let data = active_paths_mutex.read().await;
 
-        // check for new paths
-        let new_dev_info = get_hardware_info(&target_keycodes);
-        for path in new_dev_info.possible_event_paths {
-            if !data.contains(&path) {
-                println!("New event device path detected: {}", path);
+            // check for new paths
+            let new_dev_info = get_hardware_info(&target_keycodes);
+            for path in new_dev_info.possible_event_paths {
+                if !data.contains(&path) {
+                    println!("New event device path detected: {}", path);
+                    to_add.push(path);
+                }
+            }
+        }
+
+        if !to_add.is_empty() {
+            let mut data = active_paths_mutex.write().await;
+            for path in to_add {
                 data.insert(path.clone());
                 start_device_thread(path.clone(), Arc::clone(config), Arc::clone(state_mutex),
                                     Arc::clone(dev_info_arc), Arc::clone(active_paths_mutex));
