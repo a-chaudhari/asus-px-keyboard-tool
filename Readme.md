@@ -51,6 +51,9 @@ boot_default = "last" # "last", "on", "off"
 [kb_brightness_cycle]
 enabled = false
 keycode = "KEY_PROG3"
+
+[tablet_kb_backlight_disable]
+enabled = false
 ```
 
 ## Creating your own BPF remaps
