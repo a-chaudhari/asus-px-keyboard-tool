@@ -179,10 +179,10 @@ fn start_device_thread(device_path: String, config: Arc<ConfigWrapper>, state: A
                         if config.tablet_kb_backlight_disable.enabled {
                             if ev.value() == 1 {
                                 println!("Tablet mode enabled, disabling keyboard backlight");
-                                kb_illumination::toggle(false);
+                                kb_illumination::disable_toggle(true);
                             } else {
                                 println!("Tablet mode disabled, restoring keyboard backlight");
-                                kb_illumination::toggle(true);
+                                kb_illumination::disable_toggle(false);
                             }
                         }
                     }
