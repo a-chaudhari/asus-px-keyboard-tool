@@ -2,6 +2,7 @@ use std::ffi::CString;
 use evdev::KeyCode;
 use hidapi::HidApi;
 
+#[derive(Clone)]
 pub struct HidDeviceInfo {
     pub hid_id: u32,
     pub possible_event_paths: Vec<String>,
@@ -74,7 +75,7 @@ fn parse_hid_id(bus_path: String) -> u32 {
     hid_id
 }
 
-pub fn get_hardware_info(target_key_codes: Vec<KeyCode>) -> HidDeviceInfo{
+pub fn get_hardware_info(target_key_codes: &Vec<KeyCode>) -> HidDeviceInfo{
     let asus_ids = "0B05:19B6";
     let asus_bus_path = get_bus_path(asus_ids);
 
@@ -91,14 +92,13 @@ fn get_hidraw_path() -> String{
     hid.add_devices(0x0b05, 0x19b6).expect("Failed to add devices");
     for device in hid.device_list() {
         if device.usage() == 0x76 && device.usage_page() == 0xff31 {
-            println!("Found target device!");
             return device.path().to_str().unwrap().to_string();
         }
     }
     panic!("No matching HID device found");
 }
 
-fn get_possible_event_paths(target_key_codes: Vec<KeyCode>) -> Vec<String> {
+fn get_possible_event_paths(target_key_codes: &Vec<KeyCode>) -> Vec<String> {
     let mut paths: Vec<String> = Vec::new();
     if target_key_codes.len() == 0 {
         return paths;
@@ -125,7 +125,7 @@ fn get_possible_event_paths(target_key_codes: Vec<KeyCode>) -> Vec<String> {
             }
             let supported_keys = input_dev.supported_keys().unwrap();
             let mut any_found = false;
-            for code in &target_key_codes {
+            for code in target_key_codes {
                 if supported_keys.contains(*code) {
                     any_found = true;
                     break;
