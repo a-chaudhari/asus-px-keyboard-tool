@@ -69,8 +69,11 @@ pub fn start_bpf(hid_id: i32, remaps: &Vec<Remap>) {
     // spawn a thread to poll the ring buffer indefinitely without blocking
     thread::spawn(move || {
         loop {
-            let lock = mutex.lock().expect("Failed to lock mutex");
-            lock.poll(Duration::MAX).expect("ringbuf poll failed");
+            let lock = mutex.lock().expect("BPF: Failed to lock mutex");
+            let res = lock.poll(Duration::MAX);
+            if res.is_err() {
+                eprintln!("BPF: Error polling ring buffer: {:?}", res.err());
+            }
         }
     });
 }
@@ -81,9 +84,9 @@ fn process_log_entry(data: &[u8]) -> i32 {
         return 0; // ignore status events
     }
     if event.remapped == 1{
-        println!("Remapped scancode: {:#04x} -> {:#04x}", event.original, event.new);
+        println!("BPF: Remapped scancode: {:#04x} -> {:#04x}", event.original, event.new);
     } else {
-        println!("Unmapped scancode: {:#04x}", event.original);
+        println!("BPF: Unmapped scancode: {:#04x}", event.original);
     }
     0 // return value
 }
