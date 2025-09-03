@@ -27,10 +27,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if args[2] == "restore" {
             // restore mode after sleep wakeup
             restore(config_path);
-        } else {
-            println!("Invalid argument: {}", args[2]);
-            println!("Usage: {} [config_path] [restore]", args[0]);
+            return Ok(());
         }
+        println!("Invalid argument: {}", args[2]);
+        println!("Usage: {} [config_path] [restore]", args[0]);
         return Err("Invalid argument".into());
     }
     if args.len() > 3 {
