@@ -98,7 +98,7 @@ fn get_hidraw_path() -> String{
     panic!("No matching HID device found");
 }
 
-fn get_possible_event_paths(target_key_codes: &Vec<KeyCode>) -> Vec<String> {
+pub fn get_possible_event_paths(target_key_codes: &Vec<KeyCode>) -> Vec<String> {
     let mut paths: Vec<String> = Vec::new();
     if target_key_codes.len() == 0 {
         return paths;

@@ -10,7 +10,7 @@ use tokio::sync::{Mutex, RwLock};
 use evdev::{Device, EventType, KeyCode, SwitchCode};
 use crate::apkt_config::{get_config, ConfigWrapper};
 use crate::bpf_loader::start_bpf;
-use crate::hid::{get_hardware_info, toggle_fn_lock, HidDeviceInfo};
+use crate::hid::{get_hardware_info, get_possible_event_paths, toggle_fn_lock, HidDeviceInfo};
 use crate::state::{load_state, save_state};
 
 #[tokio::main]
@@ -123,16 +123,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             Arc::clone(dev_info_arc), Arc::clone(active_paths_mutex));
     }
 
-    // watch for new event devices every 2 seconds
+    // watch for new event devices every 3 seconds
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
         let mut to_add: Vec<String> = vec![];
         {
             let data = active_paths_mutex.read().await;
 
             // check for new paths
-            let new_dev_info = get_hardware_info(&target_keycodes);
-            for path in new_dev_info.possible_event_paths {
+            let possible_event_paths = get_possible_event_paths(&target_keycodes);
+            for path in possible_event_paths {
                 if !data.contains(&path) {
                     println!("New event device path detected: {}", path);
                     to_add.push(path);
