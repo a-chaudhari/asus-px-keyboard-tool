@@ -6,12 +6,14 @@ mod state;
 
 use std::collections::HashSet;
 use std::sync::{Arc};
+use std::time::Duration;
 use tokio::sync::{Mutex, RwLock};
 use evdev::{Device, EventType, KeyCode, SwitchCode};
 use crate::apkt_config::{get_config, ConfigWrapper};
 use crate::bpf_loader::start_bpf;
 use crate::hid::{get_hardware_info, get_possible_event_paths, toggle_fn_lock, HidDeviceInfo};
 use crate::state::{load_state, save_state};
+use notify::{Config, Error, Event, PollWatcher, RecursiveMode, Watcher};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -79,7 +81,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Possible event devices: {:?}", dev_info.possible_event_paths);
     println!("HIDRAW device: {}", dev_info.hidraw_device_path);
     if config.bpf.enabled {
-        println!("Starting BPF with remaps: {:?}", config.bpf.remaps);
+        println!("BPF enabled");
         start_bpf(dev_info.hid_id as i32, config.bpf.remaps.as_ref());
     } else {
         println!("BPF disabled in config");
@@ -124,31 +126,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // watch for new event devices every 3 seconds
-    loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-        let mut to_add: Vec<String> = vec![];
-        {
-            let data = active_paths_mutex.read().await;
+    let poll_config = Config::default()
+        .with_compare_contents(true) // crucial part for pseudo filesystems
+        .with_poll_interval(Duration::from_secs(3));
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<Event, Error>>(32);
 
-            // check for new paths
-            let possible_event_paths = get_possible_event_paths(&target_keycodes);
-            for path in possible_event_paths {
-                if !data.contains(&path) {
-                    println!("New event device path detected: {}", path);
-                    to_add.push(path);
+    let mut watcher = PollWatcher::new(move |evt| {tx.blocking_send(evt).unwrap()}, poll_config).unwrap();
+    watcher.watch("/dev/input".as_ref(), RecursiveMode::NonRecursive)?;
+    loop {
+        let _res = rx.recv().await;
+        if _res.is_none() {
+            println!("Watcher channel closed, exiting");
+            break;
+        }
+        let evt = _res.unwrap();
+        if evt.is_err() {
+            println!("Watcher error: {:?}", evt);
+            continue;
+        }
+        let evt = evt.unwrap();
+        if evt.kind == notify::EventKind::Create(notify::event::CreateKind::Any) {
+            // check if any paths have "event"
+            let mut is_event = false;
+            for path in &evt.paths {
+                if path.to_str().unwrap().contains("event") {
+                    is_event = true;
+                    break;
+                }
+            }
+            if !is_event {
+                continue;
+            }
+
+            let mut to_add: Vec<String> = vec![];
+            {
+                let data = active_paths_mutex.read().await;
+
+                // check for new paths
+                let possible_event_paths = get_possible_event_paths(&target_keycodes);
+                for path in possible_event_paths {
+                    if !data.contains(&path) {
+                        println!("New event device path detected: {}", path);
+                        to_add.push(path);
+                    }
+                }
+            }
+
+            if !to_add.is_empty() {
+                let mut data = active_paths_mutex.write().await;
+                for path in to_add {
+                    data.insert(path.clone());
+                    start_device_thread(path.clone(), Arc::clone(config), Arc::clone(state_mutex),
+                                        Arc::clone(dev_info_arc), Arc::clone(active_paths_mutex));
                 }
             }
         }
-
-        if !to_add.is_empty() {
-            let mut data = active_paths_mutex.write().await;
-            for path in to_add {
-                data.insert(path.clone());
-                start_device_thread(path.clone(), Arc::clone(config), Arc::clone(state_mutex),
-                                    Arc::clone(dev_info_arc), Arc::clone(active_paths_mutex));
-            }
-        }
     }
+    Err("Watcher loop exited unexpectedly".into())
 }
 
 fn start_device_thread(device_path: String, config: Arc<ConfigWrapper>, state: Arc<Mutex<bool>>,
