@@ -1,7 +1,6 @@
 [Unit]
 Description=asus px kb tool
 Requires=asus-px-keyboard-tool-restore.service
-After=keyd.service
 StartLimitIntervalSec=30
 StartLimitBurst=5
 
