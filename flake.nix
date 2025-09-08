@@ -16,9 +16,9 @@
         asus-px-keyboard-tool = pkgs.rustPlatform.buildRustPackage {
           pname = "asus-px-keyboard-tool";
           version = "0.1.0";
-          src = ./.;
+          src = pkgs.lib.cleanSource ./.;
 
-          cargoHash = "sha256-6erZPxqajGoYPvfoeWMVkJTOVCGidFIBPyzqYxsGFIc=";
+          cargoHash = "sha256-y8V+VbV9VzhF82VypEDLRRNdxuJXT0cGm6epW9mqtRg=";
 
           nativeBuildInputs = with pkgs; [
             pkg-config
