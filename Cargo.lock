@@ -98,6 +98,7 @@ checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
 name = "asus-px-keyboard-tool"
 version = "0.1.0"
 dependencies = [
+ "boot-time",
  "config",
  "evdev",
  "evdev-rs",
@@ -184,6 +185,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "boot-time"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce2b094c3b8fd302af9393806bb8af1b83a5a948ca7a91e87a92ea32167157f6"
+dependencies = [
+ "cfg-if",
+ "libc",
 ]
 
 [[package]]

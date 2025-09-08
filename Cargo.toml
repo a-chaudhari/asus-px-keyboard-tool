@@ -20,6 +20,7 @@ plain = "0.2"
 udev = "^0.9.3"
 tokio = { version = "1.47.1", features = ["rt", "rt-multi-thread", "macros", "sync"] }
 notify = "8.1.0"
+boot-time = "0.1.2"
 
 [build-dependencies]
 libbpf-cargo = "0.25"

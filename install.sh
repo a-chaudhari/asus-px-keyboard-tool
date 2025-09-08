@@ -15,7 +15,6 @@ fi
 
 install -dv /var/lib/asus-px-kb-tool/
 install -m 644 -v asus-px-keyboard-tool.service /etc/systemd/system/
-install -m 644 -v asus-px-keyboard-tool-restore.service /etc/systemd/system/
 
 if [ -f /etc/asus-px-keyboard-tool.conf ]; then
   echo "Warning: /etc/asus-px-keyboard-tool.conf already exists, not overwriting!"

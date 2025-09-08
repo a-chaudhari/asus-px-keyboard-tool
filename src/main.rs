@@ -20,24 +20,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // read args to get config path
      let args: Vec<String> = std::env::args().collect();
     let mut config_path = "asus-px-keyboard-tool.conf";
-    if args.len() >= 2 {
+    if args.len() == 2 {
         // allow user to specify config path as first arg
         config_path = &args[1];
     }
     println!("Using config path: {}", config_path);
-    if args.len() == 3 {
-        if args[2] == "restore" {
-            // restore mode after sleep wakeup
-            restore(config_path);
-            return Ok(());
-        }
-        println!("Invalid argument: {}", args[2]);
-        println!("Usage: {} [config_path] [restore]", args[0]);
-        return Err("Invalid argument".into());
-    }
-    if args.len() > 3 {
+    if args.len() >= 3 {
         println!("Too many arguments");
-        println!("Usage: {} [config_path] [restore]", args[0]);
+        println!("Usage: {} [config_path]", args[0]);
         return Err("Too many arguments".into());
     }
 
@@ -110,8 +100,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let active_paths: HashSet<String> = HashSet::new();
     let active_paths_mutex = &Arc::new(RwLock::new(active_paths));
     let dev_info_arc = &Arc::new(dev_info.clone());
-
     let state_mutex = &Arc::new(Mutex::new(state));
+    start_sleep_tracking(Arc::clone(state_mutex), dev_info.hidraw_device_path.clone());
 
     {
         let mut data = active_paths_mutex.write().await;
@@ -185,6 +175,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Err("Watcher loop exited unexpectedly".into())
 }
 
+fn start_sleep_tracking(state_mutex: Arc<Mutex<bool>>, hid_path: String) {
+    // keep a timestamp and watch for large jumps.  if a jump is detected, reapply the state
+    tokio::spawn(async move {
+        let mut last_check = boot_time::Instant::now();
+        loop {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            let now = boot_time::Instant::now();
+            let elapsed = now.duration_since(last_check);
+
+            if elapsed > Duration::from_secs(3) {
+                // likely a sleep/resume event
+                let state = state_mutex.lock().await;
+                println!("Sleep/resume detected, reapplying FnLock state: {}", if *state {"on"} else {"off"});
+                toggle_fn_lock(&hid_path, *state);
+            }
+            last_check = now;
+        }
+    });
+}
+
 fn start_device_thread(device_path: String, config: Arc<ConfigWrapper>, state: Arc<Mutex<bool>>,
                        hid_device_info: Arc<HidDeviceInfo>, active_paths_mutex: Arc<RwLock<HashSet<String>>>) {
     tokio::spawn(async move {
@@ -242,19 +252,4 @@ fn start_device_thread(device_path: String, config: Arc<ConfigWrapper>, state: A
         let mut data = active_paths_mutex.write().await;
         data.remove(&device_path);
     });
-}
-
-fn restore(config_path: &str) {
-    let config = get_config(config_path);
-    if !config.fnlock.enabled {
-        println!("FnLock not enabled in config, nothing to restore");
-        return;
-    }
-    let state = load_state();
-    let dev_info = hid::get_hardware_info(&vec![]);
-    toggle_fn_lock(&dev_info.hidraw_device_path, state);
-    println!(
-        "Restored FnLock state to: {}",
-        if state { "on" } else { "off" }
-    );
 }
