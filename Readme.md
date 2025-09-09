@@ -25,6 +25,7 @@ A tool to fix missing functionality in Asus PX keyboards on Linux. Parts of this
 ## Uninstallation
 The uninstall script will clean up all files. `sudo ./uninstall.sh`
 
+
 ## Configuration
 The default config shipped is optimized for a PX13 or PX16 laptop.  Other asus models can still use this tool, but should try with the minimal config below as a starting point.
 
@@ -86,6 +87,10 @@ You can then use this keycode in your desktop environment or window manager to l
 
 By looking at the source code of the hid-asus driver, you can find out which scancodes are supported and what keycodes they map to.  
 Then you can pick the ones you don't care about and remap your ignored keys to those. 
+
+## Nix / NixOS
+
+See [docs/nix.md](docs/nix.md) for Nix flake and NixOS module usage.
 
 ## TODO (maybe)
 - [ ] binary only packages
