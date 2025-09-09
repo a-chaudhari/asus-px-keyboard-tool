@@ -125,7 +125,6 @@
 
               systemd.services.asus-px-keyboard-tool = {
                 description = "asus px kb tool";
-                requires = [ "asus-px-keyboard-tool-restore.service" ];
                 wantedBy = [ "multi-user.target" ];
                 unitConfig = {
                   StartLimitIntervalSec = 30;
@@ -138,25 +137,6 @@
                   Restart = "on-failure";
                   # Create and manage /var/lib/asus-px-kb-tool
                   StateDirectory = "asus-px-kb-tool";
-                };
-              };
-
-              systemd.services.asus-px-keyboard-tool-restore = {
-                description = "restore px hotkey settings on sleep wake";
-                after = [ "sleep.target" ];
-                wantedBy = [
-                  "sleep.target"
-                  "multi-user.target"
-                ];
-                unitConfig = {
-                  StopWhenUnneeded = true;
-                };
-                serviceConfig = {
-                  Type = "oneshot";
-                  ExecStart = "${cfg.package}/bin/asus-px-keyboard-tool /etc/asus-px-keyboard-tool.conf restore";
-                  ExecStop = "${cfg.package}/bin/asus-px-keyboard-tool /etc/asus-px-keyboard-tool.conf restore";
-                  TimeoutSec = 5;
-                  RemainAfterExit = true;
                 };
               };
             };
