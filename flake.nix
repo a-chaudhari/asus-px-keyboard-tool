@@ -18,7 +18,7 @@
           version = "0.1.0";
           src = pkgs.lib.cleanSource ./.;
 
-          cargoHash = "sha256-y8V+VbV9VzhF82VypEDLRRNdxuJXT0cGm6epW9mqtRg=";
+          cargoHash = "sha256-GSLxot9tjItEwWDckDyLyLyGaUheUJAdn16pftZ16uw=";
 
           nativeBuildInputs = with pkgs; [
             pkg-config
