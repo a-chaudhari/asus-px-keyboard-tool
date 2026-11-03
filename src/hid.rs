@@ -67,12 +67,10 @@ fn get_bus_path(vid_pid: &str) -> String {
 }
 
 fn parse_hid_id(bus_path: String) -> u32 {
-    let parts: Vec<&str> = bus_path.split(':').collect();
-    let last_part = parts.last().expect("Failed to get last part of bus path");
-    let hid_id_str = &last_part[last_part.len() - 1..];
-    let hid_id = hid_id_str.parse::<u32>()
-        .expect("Failed to parse HID ID");
-    hid_id
+    let (_, hid_id_str) = bus_path
+        .rsplit_once('.')
+        .expect("Failed to get HID ID from bus path");
+    u32::from_str_radix(hid_id_str, 16).expect("Failed to parse HID ID")
 }
 
 pub fn get_hardware_info(target_key_codes: &Vec<KeyCode>) -> HidDeviceInfo{
@@ -138,4 +136,22 @@ pub fn get_possible_event_paths(target_key_codes: &Vec<KeyCode>) -> Vec<String> 
     }
 
     paths // return value
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_hid_id;
+
+    #[test]
+    fn parses_full_hexadecimal_hid_id() {
+        for (suffix, expected) in [
+            ("0009", 9),
+            ("000B", 11),
+            ("0010", 16),
+            ("01AB", 427),
+        ] {
+            let path = format!("/sys/bus/hid/devices/0003:0B05:19B6.{}", suffix);
+            assert_eq!(parse_hid_id(path), expected);
+        }
+    }
 }
